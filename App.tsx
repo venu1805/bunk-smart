@@ -18,7 +18,8 @@ import {
   RefreshCcw,
   Zap,
   User as UserIcon,
-  ShieldCheck
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
@@ -54,8 +55,6 @@ const App: React.FC = () => {
 
   // Auth Handlers
   const handleLogin = (email: string) => {
-    // In a real app, this would fetch the profile from a database
-    // Check if profile exists for this email
     setSettings(prev => ({ 
       ...prev, 
       isLoggedIn: true, 
@@ -79,6 +78,15 @@ const App: React.FC = () => {
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out? Data will remain securely synced in the cloud.")) {
       setSettings(prev => ({ ...prev, isLoggedIn: false }));
+    }
+  };
+
+  const handleUpdateSemester = (newSemester: string) => {
+    if (settings.profile) {
+      setSettings({
+        ...settings,
+        profile: { ...settings.profile, semester: newSemester }
+      });
     }
   };
 
@@ -118,7 +126,7 @@ const App: React.FC = () => {
   };
 
   const handleResetData = () => {
-    if (window.confirm("This will clear all your local subjects and attendance. The cloud backup will also be updated. Continue?")) {
+    if (window.confirm("This will clear all your local subjects and attendance. Use this if you are starting a new semester. Continue?")) {
       setSubjects([]);
     }
   };
@@ -312,9 +320,20 @@ const App: React.FC = () => {
                       <span className="text-sm font-bold text-slate-500">USN / ID</span>
                       <span className="text-sm font-black text-slate-800">{settings.profile?.usn}</span>
                    </div>
-                   <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                      <span className="text-sm font-bold text-slate-500">Semester</span>
-                      <span className="text-sm font-black text-slate-800">{settings.profile?.semester}</span>
+                   <div className="flex justify-between items-center py-3 border-b border-slate-50">
+                      <span className="text-sm font-bold text-slate-500">Current Semester</span>
+                      <div className="relative">
+                        <select 
+                          value={settings.profile?.semester}
+                          onChange={(e) => handleUpdateSemester(e.target.value)}
+                          className="appearance-none bg-indigo-50 text-indigo-700 text-sm font-black px-4 py-2 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 cursor-pointer"
+                        >
+                          {[1,2,3,4,5,6,7,8].map(s => (
+                            <option key={s} value={`${s}th Semester`}>{s}th Semester</option>
+                          ))}
+                        </select>
+                        <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 rotate-90 pointer-events-none" size={16} />
+                      </div>
                    </div>
                 </div>
               </div>
