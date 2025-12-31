@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, ShieldCheck, ArrowRight, Loader2, Zap, AlertCircle, RefreshCw, KeyRound, Info } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, ArrowRight, Loader2, Zap, AlertCircle, KeyRound, BellRing, X } from 'lucide-react';
 
 interface AuthProps {
   onLogin: (email: string) => void;
@@ -8,18 +8,24 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin, onSignupComplete }) => {
-  const [view, setView] = useState<'login' | 'signup' | 'otp' | 'forgot-password' | 'reset-sent'>('login');
+  const [view, setView] = useState<'login' | 'signup' | 'forgot-password' | 'reset-sent'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoHint, setDemoHint] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; sub: string } | null>(null);
 
   // Mock "database" check
   const getStoredUsers = () => {
     const users = localStorage.getItem('bunksmart_mock_users');
     return users ? JSON.parse(users) : {};
+  };
+
+  // Helper to trigger a simulated 'Received Email' notification
+  const triggerEmailNotification = (message: string, sub: string) => {
+    setToast({ message, sub });
+    setTimeout(() => setToast(null), 8000);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -31,13 +37,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onSignupComplete }) => {
       const users = getStoredUsers();
       
       if (!users[email]) {
-        setError("Account not found. We couldn't find a student with this ID.");
+        setError("Account not found. It seems you don't have an account yet.");
         setLoading(false);
         return;
       }
 
       if (users[email].password !== password) {
-        setError("Incorrect password. Access denied for security reasons.");
+        setError("Incorrect password. Access denied.");
         setLoading(false);
         return;
       }
@@ -47,9 +53,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onSignupComplete }) => {
     }, 1200);
   };
 
-  const handleRequestOtp = (e: React.FormEvent) => {
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
     setLoading(true);
 
     setTimeout(() => {
@@ -59,227 +76,206 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onSignupComplete }) => {
         setLoading(false);
         return;
       }
-      setDemoHint("DEMO MODE: Your OTP code is 123456");
-      setView('otp');
-      setLoading(false);
-    }, 1000);
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    const enteredOtp = otp.join('');
-    
-    // For demo purposes, we accept '123456' or any code if demoHint is visible
-    if (enteredOtp !== '123456') {
-      setError("Invalid verification code. Please check your email again.");
-      return;
-    }
-
-    setLoading(true);
-    setTimeout(() => {
-      const users = getStoredUsers();
-      // Default password for new users in this simulation
-      users[email] = { password: 'password123' }; 
+      
+      // Save user to "database"
+      users[email] = { password }; 
       localStorage.setItem('bunksmart_mock_users', JSON.stringify(users));
       
       onSignupComplete(email);
       setLoading(false);
-    }, 1200);
+    }, 1500);
   };
 
   const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
     setTimeout(() => {
+      triggerEmailNotification(
+        "Password Reset Link",
+        `A secure link to reset your BunkSmart password was sent to ${email}.`
+      );
       setView('reset-sent');
       setLoading(false);
     }, 1500);
   };
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 overflow-hidden border border-slate-100">
-        <div className="p-8 pt-12 text-center">
-          <div className="inline-flex p-4 bg-indigo-600 rounded-3xl mb-6 shadow-xl shadow-indigo-200">
-            <Zap className="text-white fill-white" size={32} />
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      
+      {/* Simulated Email Notification Toast */}
+      {toast && (
+        <div className="fixed top-6 left-6 right-6 z-[100] animate-in slide-in-from-top-10 duration-500 max-w-md mx-auto">
+          <div className="bg-slate-900 text-white p-4 rounded-3xl shadow-2xl flex items-start gap-4 border border-slate-700">
+            <div className="bg-indigo-600 p-2 rounded-xl text-white">
+              <BellRing size={20} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black flex items-center justify-between">
+                New Email from BunkSmart
+                <button onClick={() => setToast(null)} className="opacity-50 hover:opacity-100">
+                  <X size={14} />
+                </button>
+              </p>
+              <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{toast.message}</p>
+              <p className="text-sm mt-2 text-indigo-200 font-medium leading-relaxed">{toast.sub}</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">BunkSmart</h1>
-          <p className="text-slate-500 font-medium px-4 text-sm">
-            {view === 'login' && 'Secure Student Attendance Gateway'}
-            {view === 'signup' && 'Create Your Encrypted Account'}
-            {view === 'otp' && 'Verify Your Identity'}
-            {view === 'forgot-password' && 'Recover Account Access'}
-            {view === 'reset-sent' && 'Check Your Inbox'}
+        </div>
+      )}
+
+      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl shadow-indigo-100 overflow-hidden border border-slate-100">
+        <div className="p-8 pt-12 text-center">
+          <div className="inline-flex p-5 bg-indigo-600 rounded-[2rem] mb-6 shadow-xl shadow-indigo-200">
+            <Zap className="text-white fill-white" size={36} />
+          </div>
+          <h1 className="text-3xl font-black text-black mb-2 tracking-tight">BunkSmart</h1>
+          <p className="text-slate-500 font-bold px-4 text-xs uppercase tracking-[0.2em] opacity-60">
+            {view === 'login' && 'Student Access Panel'}
+            {view === 'signup' && 'Create Secure Account'}
+            {view === 'forgot-password' && 'Account Recovery'}
+            {view === 'reset-sent' && 'Inbox Check'}
           </p>
         </div>
 
         <div className="px-8 pb-12">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-3xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
               <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
               <div className="flex-1">
-                <p className="text-sm font-bold text-red-700">{error}</p>
+                <p className="text-sm font-bold text-red-900 leading-snug">{error}</p>
                 {error.includes("Account not found") && (
-                  <button onClick={() => {setView('signup'); setError(null);}} className="text-xs font-black uppercase tracking-widest text-indigo-600 mt-2 hover:underline block">Sign Up Instead</button>
+                  <button onClick={() => {setView('signup'); setError(null);}} className="bg-red-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full mt-3 hover:bg-red-700 transition-colors">
+                    Sign Up Now
+                  </button>
                 )}
                 {error.includes("Incorrect password") && (
-                  <button onClick={() => {setView('forgot-password'); setError(null);}} className="text-xs font-black uppercase tracking-widest text-indigo-600 mt-2 hover:underline block">Reset Password</button>
+                  <button onClick={() => {setView('forgot-password'); setError(null);}} className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full mt-3 hover:bg-indigo-700 transition-colors">
+                    Reset Password
+                  </button>
                 )}
               </div>
-            </div>
-          )}
-
-          {demoHint && view === 'otp' && (
-            <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-3 animate-in fade-in zoom-in">
-              <Info className="text-indigo-600 shrink-0" size={18} />
-              <p className="text-xs font-bold text-indigo-700">{demoHint}</p>
             </div>
           )}
 
           {view === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative group">
-                <Mail className="absolute left-4 top-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                <Mail className="absolute left-5 top-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
                 <input 
                   type="email" 
                   required
-                  placeholder="Student Email" 
+                  placeholder="Student Email Address" 
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900"
+                  className="w-full pl-14 pr-4 py-5 bg-slate-50 rounded-[1.5rem] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-bold text-black placeholder:text-slate-400"
                 />
               </div>
               <div className="relative group">
-                <Lock className="absolute left-4 top-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                <Lock className="absolute left-5 top-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
                 <input 
                   type="password" 
                   required
-                  placeholder="Password" 
+                  placeholder="Secret Password" 
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900"
+                  className="w-full pl-14 pr-4 py-5 bg-slate-50 rounded-[1.5rem] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-bold text-black placeholder:text-slate-400"
                 />
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end pr-2">
                 <button 
                   type="button" 
                   onClick={() => {setView('forgot-password'); setError(null);}}
-                  className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors"
+                  className="text-xs font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors"
                 >
-                  Forgot Password?
+                  Forgot Key?
                 </button>
               </div>
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 transition-all disabled:opacity-70 active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="animate-spin" size={22} /> : 'Sign In Securely'}
+                {loading ? <Loader2 className="animate-spin" size={24} /> : <>Sign In Securely <ArrowRight size={20}/></>}
               </button>
-              <p className="text-center text-sm text-slate-500 mt-6">
-                New to BunkSmart? <button type="button" onClick={() => {setView('signup'); setError(null);}} className="text-indigo-600 font-bold hover:underline">Create Account</button>
+              <p className="text-center text-sm text-slate-500 mt-8 font-medium">
+                New to the platform? <button type="button" onClick={() => {setView('signup'); setError(null);}} className="text-indigo-600 font-black hover:underline decoration-2 underline-offset-4">Register Account</button>
               </p>
             </form>
           )}
 
           {view === 'signup' && (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-4 top-4 text-slate-400" size={20} />
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="relative group">
+                <Mail className="absolute left-5 top-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
                 <input 
                   type="email" 
                   required
                   placeholder="Institutional Email" 
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900"
+                  className="w-full pl-14 pr-4 py-5 bg-slate-50 rounded-[1.5rem] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-bold text-black placeholder:text-slate-400"
+                />
+              </div>
+              <div className="relative group">
+                <Lock className="absolute left-5 top-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                <input 
+                  type="password" 
+                  required
+                  placeholder="Create Password" 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full pl-14 pr-4 py-5 bg-slate-50 rounded-[1.5rem] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-bold text-black placeholder:text-slate-400"
+                />
+              </div>
+              <div className="relative group">
+                <Lock className="absolute left-5 top-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                <input 
+                  type="password" 
+                  required
+                  placeholder="Confirm Password" 
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="w-full pl-14 pr-4 py-5 bg-slate-50 rounded-[1.5rem] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-bold text-black placeholder:text-slate-400"
                 />
               </div>
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 transition-all disabled:opacity-70 active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="animate-spin" size={22} /> : 'Send OTP Code'}
+                {loading ? <Loader2 className="animate-spin" size={24} /> : 'Create Account'}
               </button>
-              <p className="text-center text-sm text-slate-500 mt-6">
-                Already registered? <button type="button" onClick={() => {setView('login'); setError(null);}} className="text-indigo-600 font-bold hover:underline">Log In</button>
+              <p className="text-center text-sm text-slate-500 mt-8 font-medium">
+                Already registered? <button type="button" onClick={() => {setView('login'); setError(null);}} className="text-indigo-600 font-black hover:underline decoration-2 underline-offset-4">Sign In</button>
               </p>
-            </form>
-          )}
-
-          {view === 'otp' && (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              <div className="flex justify-between gap-2">
-                {otp.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    id={`otp-${idx}`}
-                    type="text"
-                    required
-                    maxLength={1}
-                    value={digit}
-                    onChange={e => handleOtpChange(idx, e.target.value)}
-                    className="w-12 h-14 bg-slate-50 rounded-xl border border-slate-100 text-center text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  />
-                ))}
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-slate-400 font-black uppercase tracking-widest mb-2">Check Your Email</p>
-                <p className="text-sm text-slate-500">Security code sent to <span className="text-slate-800 font-bold">{email}</span></p>
-              </div>
-              <button 
-                type="submit"
-                disabled={loading || otp.some(d => !d)}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
-              >
-                {loading ? <Loader2 className="animate-spin" size={22} /> : 'Verify & Continue'}
-              </button>
-              <button 
-                type="button" 
-                onClick={() => {setView('signup'); setDemoHint(null);}} 
-                className="w-full text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors"
-              >
-                Change Email Address
-              </button>
             </form>
           )}
 
           {view === 'forgot-password' && (
             <form onSubmit={handleForgotPassword} className="space-y-6">
-              <div className="relative">
-                <Mail className="absolute left-4 top-4 text-slate-400" size={20} />
+              <div className="relative group">
+                <Mail className="absolute left-5 top-5 text-slate-400" size={20} />
                 <input 
                   type="email" 
                   required
-                  placeholder="Your Registered Email" 
+                  placeholder="Registered Email" 
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900"
+                  className="w-full pl-14 pr-4 py-5 bg-slate-50 rounded-[1.5rem] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-bold text-black"
                 />
               </div>
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all disabled:opacity-70"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 transition-all disabled:opacity-70 active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="animate-spin" size={22} /> : 'Email Recovery Link'}
+                {loading ? <Loader2 className="animate-spin" size={24} /> : 'Send Recovery Link'}
               </button>
               <button 
                 type="button" 
                 onClick={() => setView('login')} 
-                className="w-full text-slate-400 font-bold text-sm hover:text-slate-600"
+                className="w-full text-slate-400 font-black text-xs uppercase tracking-widest hover:text-slate-600"
               >
                 Return to Login
               </button>
@@ -287,32 +283,32 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onSignupComplete }) => {
           )}
 
           {view === 'reset-sent' && (
-            <div className="text-center space-y-6">
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto text-green-500 border border-green-100">
-                <KeyRound size={40} />
+            <div className="text-center space-y-8 py-4">
+              <div className="w-24 h-24 bg-indigo-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-indigo-600 border border-indigo-100 shadow-inner">
+                <KeyRound size={48} />
               </div>
               <div>
-                <h3 className="text-xl font-black text-slate-800">Check Your Inbox</h3>
-                <p className="text-sm text-slate-500 mt-2 leading-relaxed">We've sent a secure password reset link to <span className="text-slate-800 font-bold">{email}</span>. The link will expire in 15 minutes.</p>
+                <h3 className="text-2xl font-black text-black">Reset Link Sent</h3>
+                <p className="text-sm text-slate-500 mt-4 leading-relaxed font-medium">Check your inbox for a secure password reset link sent to <br/><span className="text-black font-black">{email}</span>.</p>
               </div>
               <button 
                 onClick={() => setView('login')}
-                className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98]"
+                className="w-full bg-slate-900 text-white font-black py-5 rounded-[1.5rem] transition-all shadow-xl active:scale-[0.98]"
               >
-                Back to Sign In
+                Return to Login
               </button>
             </div>
           )}
         </div>
       </div>
       
-      <div className="mt-8 flex flex-col items-center gap-3 text-slate-400">
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={18} className="text-indigo-400" />
-          <p className="text-[10px] font-black uppercase tracking-widest">Encrypted Cloud Storage</p>
+      <div className="mt-12 flex flex-col items-center gap-4 text-slate-400">
+        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-100 shadow-sm">
+          <ShieldCheck size={18} className="text-indigo-600" />
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Secure AES-256 Storage</p>
         </div>
-        <p className="text-[10px] opacity-60 text-center max-w-[280px] leading-relaxed">
-          BunkSmart uses industry-standard encryption for all student records. Your data is strictly private.
+        <p className="text-[10px] opacity-60 text-center max-w-[300px] leading-relaxed font-medium">
+          Your credentials and attendance records are strictly protected with end-to-end institutional grade encryption.
         </p>
       </div>
     </div>
