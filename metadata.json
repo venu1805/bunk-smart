@@ -1,0 +1,5 @@
+{
+  "name": "BunkSmart",
+  "description": "A smart attendance manager for students that calculates safe-to-skip classes and recovery paths to stay above attendance thresholds.",
+  "requestFramePermissions": []
+}
