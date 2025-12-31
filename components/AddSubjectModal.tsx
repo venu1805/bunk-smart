@@ -42,8 +42,8 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ onClose, onAdd }) => 
                 type="text" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Advanced Mathematics"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                placeholder="e.g. Data Structures"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900"
                 autoFocus
               />
             </div>

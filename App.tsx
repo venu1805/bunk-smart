@@ -17,7 +17,8 @@ import {
   Trash2,
   RefreshCcw,
   Zap,
-  User as UserIcon
+  User as UserIcon,
+  ShieldCheck
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
@@ -54,12 +55,21 @@ const App: React.FC = () => {
   // Auth Handlers
   const handleLogin = (email: string) => {
     // In a real app, this would fetch the profile from a database
-    // For this simulation, we assume login works
-    setSettings(prev => ({ ...prev, isLoggedIn: true, hasCompletedSetup: !!prev.profile }));
+    // Check if profile exists for this email
+    setSettings(prev => ({ 
+      ...prev, 
+      isLoggedIn: true, 
+      hasCompletedSetup: !!prev.profile,
+      profile: prev.profile?.email === email ? prev.profile : null
+    }));
   };
 
   const handleSignupComplete = (email: string) => {
-    setSettings(prev => ({ ...prev, isLoggedIn: true }));
+    setSettings(prev => ({ 
+      ...prev, 
+      isLoggedIn: true,
+      profile: prev.profile ? prev.profile : { email } as UserProfile 
+    }));
   };
 
   const handleProfileComplete = (profile: UserProfile) => {
@@ -67,7 +77,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out? Data will remain synced in the cloud.")) {
+    if (window.confirm("Are you sure you want to log out? Data will remain securely synced in the cloud.")) {
       setSettings(prev => ({ ...prev, isLoggedIn: false }));
     }
   };
@@ -119,7 +129,7 @@ const App: React.FC = () => {
   }
 
   // If logged in but profile not complete, show Profile Setup
-  if (!settings.hasCompletedSetup) {
+  if (!settings.hasCompletedSetup || !settings.profile?.name) {
     return <ProfileSetup email={settings.profile?.email || "user@example.com"} onComplete={handleProfileComplete} />;
   }
 
@@ -134,19 +144,19 @@ const App: React.FC = () => {
   const PIE_COLORS = ['#4f46e5', '#f1f5f9'];
 
   return (
-    <div className="min-h-screen pb-24 md:pb-8 flex flex-col max-w-2xl mx-auto shadow-2xl bg-white md:my-4 md:rounded-3xl overflow-hidden">
+    <div className="min-h-screen pb-24 md:pb-8 flex flex-col max-w-2xl mx-auto shadow-2xl bg-white md:my-4 md:rounded-3xl overflow-hidden border border-slate-100">
       {/* Header */}
       <header className="p-6 bg-white border-b border-slate-100 sticky top-0 z-40">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shadow-inner">
                <UserIcon size={20} />
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-800 leading-tight">
                 {settings.profile?.name}
               </h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                 {settings.profile?.usn} • {settings.profile?.semester}
               </p>
             </div>
@@ -168,15 +178,21 @@ const App: React.FC = () => {
             {subjects.length > 0 && <GeminiAdvisor subjects={subjects} settings={settings} />}
 
             {/* Overall Stat Summary Card */}
-            <div className="bg-slate-50 rounded-3xl p-6 flex items-center justify-between border border-slate-100">
-              <div>
+            <div className="bg-slate-50 rounded-3xl p-6 flex items-center justify-between border border-slate-100 relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform">
+                <Zap size={100} />
+              </div>
+              <div className="relative z-10">
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Overall Percentage</p>
                 <h2 className={`text-4xl font-black ${globalMetrics.isAboveTarget ? 'text-green-600' : 'text-red-600'}`}>
                   {globalMetrics.percentage.toFixed(1)}%
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">Target: {settings.targetPercentage}%</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs text-slate-500 font-bold">Goal: {settings.targetPercentage}%</p>
+                  <ShieldCheck size={12} className="text-indigo-400" />
+                </div>
               </div>
-              <div className="w-20 h-20">
+              <div className="w-20 h-20 relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -218,7 +234,7 @@ const App: React.FC = () => {
                   <p className="text-slate-400 font-bold">No subjects added yet.</p>
                   <button 
                     onClick={() => setShowAddModal(true)}
-                    className="mt-4 text-indigo-600 font-black text-sm uppercase tracking-widest"
+                    className="mt-4 text-indigo-600 font-black text-sm uppercase tracking-widest hover:underline"
                   >
                     Add Your First Subject
                   </button>
@@ -262,12 +278,12 @@ const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-indigo-600 p-6 rounded-[2rem] text-white">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Classes Conducted</p>
+              <div className="bg-indigo-600 p-6 rounded-[2rem] text-white shadow-lg shadow-indigo-100">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Total Classes</p>
                 <p className="text-3xl font-black">{globalMetrics.totalClasses}</p>
               </div>
-              <div className="bg-slate-900 p-6 rounded-[2rem] text-white">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Classes Attended</p>
+              <div className="bg-slate-900 p-6 rounded-[2rem] text-white shadow-lg shadow-slate-100">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Total Attended</p>
                 <p className="text-3xl font-black">{globalMetrics.totalAttended}</p>
               </div>
             </div>
@@ -278,16 +294,23 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-end">
               <h2 className="text-2xl font-black text-slate-800">Settings</h2>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Cloud Synced</span>
+              <div className="flex items-center gap-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-green-100">
+                <ShieldCheck size={12} />
+                Cloud Active
+              </div>
             </div>
             
             <div className="space-y-4">
               <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Profile Details</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Institutional Profile</p>
                 <div className="space-y-3">
                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
                       <span className="text-sm font-bold text-slate-500">Institution</span>
                       <span className="text-sm font-black text-slate-800">{settings.profile?.collegeName}</span>
+                   </div>
+                   <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                      <span className="text-sm font-bold text-slate-500">USN / ID</span>
+                      <span className="text-sm font-black text-slate-800">{settings.profile?.usn}</span>
                    </div>
                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
                       <span className="text-sm font-bold text-slate-500">Semester</span>
